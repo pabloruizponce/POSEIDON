@@ -1,20 +1,7 @@
-import torch
-from diffusers import StableDiffusionPipeline
-import matplotlib.pyplot as plt
-from PIL import Image
-
+from extraction.coco_instance_extractor import COCOInstanceExtractor
 
 if __name__ == '__main__':
-    # Load Model
-    pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
+    extractor = COCOInstanceExtractor()
+    print(extractor.base_path)
+    print(extractor.val_annotations['categories'])
 
-    # Prompt
-    prompt = "a photo of an astronaut riding a horse on mars"
-
-    # Image generation
-    image = pipe(prompt).images[0]  
-    image.save('result.jpg')
-
-    # Plot
-    plt.imshow(image)
-    plt.show()
