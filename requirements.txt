@@ -3,3 +3,6 @@ numpy
 rembg
 diffusers
 torchvision
+transformers
+matplotlib
+accelerate
