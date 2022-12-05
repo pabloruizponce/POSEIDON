@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from extraction.instance_extractor import InstanceExtractor
 
 class COCOInstanceExtractor(InstanceExtractor):
@@ -97,6 +98,36 @@ class COCOInstanceExtractor(InstanceExtractor):
         images.progress_apply(lambda x: self.extract_instances_image(annotations, x, output_path), axis=1)
         return
 
+
+    def get_patch_bbox(self, instance, ax, cmap):
+        category = instance['category_id']
+        x, y, w, h = instance['bbox']
+        bbox = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor=cmap(category), facecolor='none')
+        ax.add_patch(bbox)
+        return
+
+    def visualize(self, img_set='train', img_id=None, cmap='tab10'):
+        # Get annotations and images information
+        annotations = pd.DataFrame(self.train_annotations['annotations'])
+        images = pd.DataFrame(self.train_annotations['images'])
+        # If no Image ID is specified, a random image will be selected
+        if img_id is None:
+            img_id = images.iloc[np.random.randint(0, images.shape[0])]['id']
+        # Get Image
+        img_row = images[images['id'] == img_id]
+        img_path = os.path.join(self.images_path, img_set, img_row['file_name'].iloc[0])
+        img = Image.open(img_path)
+        # Get Instances on the image
+        bboxs = annotations[annotations['image_id'] == img_id]
+        print("Instances on the Image")
+        print(bboxs)
+        # Plot Bounding Boxes on the Instances
+        fig, ax = plt.subplots()
+        cmap = plt.cm.get_cmap(cmap)
+        bboxs.apply(lambda x: self.get_patch_bbox(x, ax, cmap), axis=1)
+        plt.imshow(img)
+        plt.show()   
+        return 
     
 
 
