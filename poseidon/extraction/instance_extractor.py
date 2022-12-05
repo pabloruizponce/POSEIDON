@@ -8,14 +8,14 @@ class InstanceExtractor:
         if self.base_path is None:
             raise EnvironmentError("Environment variable 'POSEIDON_DATASET_PATH' not found")
 
-    def dataset_stats():
+    def dataset_stats(self):
         pass
 
-    def extract():
+    def extract(self):
         pass
 
-    def extract_background():
+    def extract_background(self):
         pass
 
-    def visualize(img_path=None):
+    def visualize(img_id=None):
         pass

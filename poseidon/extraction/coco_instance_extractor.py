@@ -1,6 +1,10 @@
 import json
 import os
 import pandas as pd
+import numpy as np
+from PIL import Image
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 from extraction.instance_extractor import InstanceExtractor
 
 class COCOInstanceExtractor(InstanceExtractor):
@@ -57,6 +61,48 @@ class COCOInstanceExtractor(InstanceExtractor):
             else:
                 print("0")        
 
+
+    # Extract and save a particular instance from an image
+    def extract_instance_image(self, img, bbox, output_path):
+        output_path = output_path + "_" + str(bbox['id']) + "_" + str(bbox['category_id']) + ".png"
+        bbox = bbox['bbox']
+        x, y, w, h = bbox
+        instance = Image.fromarray(img[y:y+h, x:x+w])
+        instance.save(output_path)
+        return 
+
+    # Extract all instances from an image
+    def extract_instances_image(self, annotations, img_row, output_path):
+        output_path = os.path.join(output_path, str(img_row['id']))
+        bboxs =  annotations[annotations['image_id'] == img_row['id']]
+        img_path = os.path.join(self.images_path, 'train', img_row['file_name'])
+        img = Image.open(img_path) 
+        img = np.array(img)
+        bboxs.apply(lambda x: self.extract_instance_image(img, x, output_path) ,axis=1)
+        return
+
+    # Extract and save all the intances from all the images in the training set 
+    def extract(self, output_path='./outputs'):
+        # Create output directory
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
+            print("Output directory creted: ", output_path)
+        # Get annotations and images information
+        annotations = pd.DataFrame(self.train_annotations['annotations'])
+        images = pd.DataFrame(self.train_annotations['images'])
+        # Fancier
+        print("Extracting Instances:")
+        tqdm.pandas()
+        # Extraction
+        images.progress_apply(lambda x: self.extract_instances_image(annotations, x, output_path), axis=1)
+        return
+
+    
+
+
+
+
+        
 
 
 
