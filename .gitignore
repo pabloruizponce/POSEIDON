@@ -134,6 +134,8 @@ results/
 result.*
 outputs/
 outputs.*
+background/
+background.*
 
 # MacOS
 .DS_Store
