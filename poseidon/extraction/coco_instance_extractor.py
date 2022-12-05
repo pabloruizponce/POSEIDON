@@ -65,12 +65,20 @@ class COCOInstanceExtractor(InstanceExtractor):
 
     # Extract and save a particular instance from an image
     def extract_instance_image(self, img, bbox, output_path):
-        output_path = output_path + "_" + str(bbox['id']) + "_" + str(bbox['category_id']) + ".png"
+        output_path = os.path.split(output_path)
+        # Create output directory
+        if not os.path.exists(os.path.join(output_path[0], str(bbox['category_id']),)):
+            os.mkdir(os.path.join(output_path[0], str(bbox['category_id']),))
+        # Save instance on the path 'base_path/outputs/category_id/instance_id.png'
+        output_path = os.path.join(output_path[0], str(bbox['category_id']), output_path[1])
+        output_path = output_path + "_" + str(bbox['id']) + ".png"
+        # Extract bounding box
         bbox = bbox['bbox']
         x, y, w, h = bbox
         instance = Image.fromarray(img[y:y+h, x:x+w])
         instance.save(output_path)
         return 
+
 
     # Extract all instances from an image
     def extract_instances_image(self, annotations, img_row, output_path):
@@ -81,6 +89,7 @@ class COCOInstanceExtractor(InstanceExtractor):
         img = np.array(img)
         bboxs.apply(lambda x: self.extract_instance_image(img, x, output_path) ,axis=1)
         return
+
 
     # Extract and save all the intances from all the images in the training set 
     def extract(self, output_path='./outputs'):
@@ -106,6 +115,7 @@ class COCOInstanceExtractor(InstanceExtractor):
         ax.add_patch(bbox)
         return
 
+
     def visualize(self, img_set='train', img_id=None, cmap='tab10'):
         # Get annotations and images information
         annotations = pd.DataFrame(self.train_annotations['annotations'])
@@ -128,13 +138,3 @@ class COCOInstanceExtractor(InstanceExtractor):
         plt.imshow(img)
         plt.show()   
         return 
-    
-
-
-
-
-        
-
-
-
-
