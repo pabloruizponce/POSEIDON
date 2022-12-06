@@ -156,7 +156,7 @@ class COCOInstanceExtractor(InstanceExtractor):
         annotations = pd.DataFrame(self.train_annotations['annotations'])
         images = pd.DataFrame(self.train_annotations['images'])
         # Fancier
-        print("Extracting Instances:")
+        print("Extracting Background:")
         tqdm.pandas()
         # Extraction       
         images.progress_apply(lambda x: self.extract_background_image(output_path, annotations, x, background_size, stride) , axis=1)
