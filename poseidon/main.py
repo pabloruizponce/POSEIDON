@@ -1,8 +1,5 @@
-from extraction.coco_instance_extractor import COCOInstanceExtractor
+from generation.coco_instance_generator import COCOInstanceGenerator
 
 if __name__ == '__main__':
-    extractor = COCOInstanceExtractor()
-    extractor.dataset_stats()
-    extractor.extract()
-    extractor.extract_background(background_size=(1000,1000), stride=(100,100))
-
+    generator = COCOInstanceGenerator()
+    generator.balance('/Users/pabloruizponce/Vainas/POSEIDON/poseidon/outputs')

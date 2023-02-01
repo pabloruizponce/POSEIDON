@@ -7,6 +7,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from extraction.instance_extractor import InstanceExtractor
+from rembg import remove
+
 
 class COCOInstanceExtractor(InstanceExtractor):
 
@@ -64,18 +66,27 @@ class COCOInstanceExtractor(InstanceExtractor):
 
 
     # Extract and save a particular instance from an image
-    def extract_instance_image(self, img, bbox, output_path):
+    def extract_instance_image(self, img, bbox, output_path, angle_camera, angle_divisions=8):
         output_path = os.path.split(output_path)
         # Create output directory
         if not os.path.exists(os.path.join(output_path[0], str(bbox['category_id']),)):
             os.mkdir(os.path.join(output_path[0], str(bbox['category_id']),))
-        # Save instance on the path 'base_path/outputs/category_id/instance_id.png'
-        output_path = os.path.join(output_path[0], str(bbox['category_id']), output_path[1])
+        
+        if angle_camera is not None:
+            angle_camera_bin = int(angle_camera) % int(angle_divisions)
+            if not os.path.exists(os.path.join(output_path[0], str(bbox['category_id']), str(angle_camera_bin))):
+                os.mkdir(os.path.join(output_path[0], str(bbox['category_id']), str(angle_camera_bin)))
+            # Save instance on the path 'base_path/outputs/category_id/instance_id.png'
+            output_path = os.path.join(output_path[0], str(bbox['category_id']), str(angle_camera_bin), output_path[1])
+        else:
+            # Save instance on the path 'base_path/outputs/category_id/instance_id.png'
+            output_path = os.path.join(output_path[0], str(bbox['category_id']), output_path[1])
         output_path = output_path + "_" + str(bbox['id']) + ".png"
         # Extract bounding box
         bbox = bbox['bbox']
         x, y, w, h = bbox
         instance = Image.fromarray(img[y:y+h, x:x+w])
+        #instance = remove(instance)
         instance.save(output_path)
         return 
 
@@ -83,11 +94,15 @@ class COCOInstanceExtractor(InstanceExtractor):
     # Extract all instances from an image
     def extract_instances_image(self, annotations, img_row, output_path):
         output_path = os.path.join(output_path, str(img_row['id']))
-        bboxs =  annotations[annotations['image_id'] == img_row['id']]
-        img_path = os.path.join(self.images_path, 'train', img_row['file_name'])
-        img = Image.open(img_path) 
-        img = np.array(img)
-        bboxs.apply(lambda x: self.extract_instance_image(img, x, output_path) ,axis=1)
+        angle_camera = None
+        #print(img_row)
+        if img_row["meta"] is not None and "gimbal_heading(degrees)" in img_row["meta"]:
+            angle_camera = img_row["meta"]["gimbal_heading(degrees)"]
+            bboxs =  annotations[annotations['image_id'] == img_row['id']]
+            img_path = os.path.join(self.images_path, 'train', img_row['file_name'])
+            img = Image.open(img_path) 
+            img = np.array(img)
+            bboxs.apply(lambda x: self.extract_instance_image(img, x, output_path, angle_camera) ,axis=1)
         return
 
 
