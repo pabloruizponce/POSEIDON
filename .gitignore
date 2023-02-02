@@ -139,3 +139,8 @@ background.*
 
 # MacOS
 .DS_Store
+
+# Docker (for the moment)
+docker/
+
+SDSYOLO/

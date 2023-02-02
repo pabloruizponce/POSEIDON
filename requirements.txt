@@ -1,9 +1,4 @@
-torch
 numpy
 pandas
 rembg
-diffusers
-torchvision
-transformers
 matplotlib
-accelerate
