@@ -86,7 +86,6 @@ class COCOInstanceExtractor(InstanceExtractor):
         bbox = bbox['bbox']
         x, y, w, h = bbox
         instance = Image.fromarray(img[y:y+h, x:x+w])
-        #instance = remove(instance)
         instance.save(output_path)
         return 
 

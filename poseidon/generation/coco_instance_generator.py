@@ -8,6 +8,7 @@ from generation.instance_generator import InstanceGenerator
 import random
 import shutil
 from filecmp import dircmp
+import swifter
 
 # Numpy converting things without being asked to do it
 # Stolen from: https://stackoverflow.com/a/57915246
@@ -44,6 +45,7 @@ class COCOInstanceGenerator(InstanceGenerator):
         shutil.copyfile(self.train_annotations_path, 
                         self.a_train_annotations_path)
         
+        
         if os.path.exists(self.images_a_train_path):
             shutil.rmtree(self.images_a_train_path, onerror=ignore_extended_attributes)
 
@@ -53,6 +55,7 @@ class COCOInstanceGenerator(InstanceGenerator):
 
         print("Copy Created")
         
+
         # Read annotations as a dictionary
         with open(self.a_train_annotations_path) as f:
             self.train_annotations = json.load(f)
@@ -97,11 +100,11 @@ class COCOInstanceGenerator(InstanceGenerator):
                x1.h + x1.y > x2.y)
 
 
-    def check_instance_collider(self, img_row, bg_window, bboxs):
+    def check_instance_collider(self, instance, bboxs):
         bboxs = np.array([i for i in bboxs])
         bboxs = pd.DataFrame(bboxs, columns=['x', 'y', 'w', 'h'])
-        window_has_collision = bboxs.apply(lambda x: self.box_collider(bg_window, x), axis=1).any()
-        if not window_has_collision:
+        window_has_collision = bboxs.apply(lambda x: self.box_collider(instance.iloc[0], x), axis=1)
+        if not window_has_collision.any():
             return True
         return False
 
@@ -112,7 +115,7 @@ class COCOInstanceGenerator(InstanceGenerator):
         annotations = pd.DataFrame(self.train_annotations['annotations'])
         bboxs =  annotations[annotations['image_id'] == img_row['id']]['bbox']
         bboxs = np.array([i for i in bboxs])
-        bboxs = pd.DataFrame(bboxs, columns=['x', 'y', 'w', 'h'])
+        bboxs = pd.DataFrame(bboxs, columns=['x', 'y', 'w', 'h']).astype('int')
         return bboxs['y'].max()
 
 
@@ -130,12 +133,28 @@ class COCOInstanceGenerator(InstanceGenerator):
         
         instance_id = annotations['id'].max() + 1
         instance_image = img_row['id']
-        instance_bbox = [
-                            random.randint(0, img_row['width']),
-                            random.randint(max_y, img_row['height']),
-                            instance.width,
-                            instance.height
-                        ]
+
+        while True:
+            instance_x = random.randint(0, img_row['width'] - instance.width)
+            instance_y = random.randint(max_y - instance.height, img_row['height'] - instance.height)
+
+            instance_bbox = [
+                                instance_x,
+                                instance_y,
+                                instance.width,
+                                instance.height
+                            ]
+
+            instance_bbox_df = pd.DataFrame([instance_bbox], columns=['x', 'y', 'w', 'h'])
+            bboxs =  annotations[annotations['image_id'] == img_row['id']]['bbox']
+
+            
+            if not self.check_instance_collider(instance_bbox_df, bboxs):
+                break
+            
+
+        
+
         instance_area = instance.width * instance.height
         instance_category = choice
 
@@ -147,8 +166,7 @@ class COCOInstanceGenerator(InstanceGenerator):
             "category_id": instance_category
         }
 
-        image.paste(instance, box=(random.randint(0, img_row['width']), 
-                                    random.randint(max_y, img_row['height'])))
+        image.paste(instance, box=(instance_x, instance_y))
 
         return instance_dict
     
@@ -185,14 +203,12 @@ class COCOInstanceGenerator(InstanceGenerator):
 
             # Gets the number of instances that will be generated for each image
             n_instances = random.randint(1, 10)
-            instances_metadata = []
             for i in range(n_instances):
                 instance_metadata = self.add_instance_image(new_image_metadata, instances_path, image, max_y, angle_camera_bin)
-                instances_metadata.append(instance_metadata)
-            
+                self.train_annotations['annotations'].append(instance_metadata)
+
             # Update everything
             image.save(os.path.join(self.images_a_train_path,new_image_metadata['file_name']))
-            self.train_annotations['annotations'].extend(instances_metadata)
 
         return
 
@@ -210,6 +226,8 @@ class COCOInstanceGenerator(InstanceGenerator):
             tqdm.pandas()
             # New instances generation
             images.progress_apply(lambda x: self.add_instances_image(x, instances_path, iteration), axis=1)
+            # Progress Bar not appearing I dunno why
+            #images.swifter.progress_bar(True, bar_format='{l_bar}{bar}| elapsed: {elapsed}s').apply(lambda x: self.add_instances_image(x, instances_path, iteration), axis=1)
 
             with open(self.a_train_annotations_path, 'w') as f:
                 json.dump(self.train_annotations, f,  cls=NpEncoder)
