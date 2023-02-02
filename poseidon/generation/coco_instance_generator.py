@@ -9,7 +9,7 @@ import random
 import shutil
 from filecmp import dircmp
 import swifter
-
+from utils.coco2yolo import ignore_extended_attributes
 # Numpy converting things without being asked to do it
 # Stolen from: https://stackoverflow.com/a/57915246
 class NpEncoder(json.JSONEncoder):
@@ -21,13 +21,6 @@ class NpEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
-
-# MAC shitty file system related
-# Stolen from: https://stackoverflow.com/a/70355470
-def ignore_extended_attributes(func, filename, exc_info):
-    is_meta_file = os.path.basename(filename).startswith("._")
-    if not (func is os.unlink and is_meta_file):
-        raise
 
 class COCOInstanceGenerator(InstanceGenerator):
 
