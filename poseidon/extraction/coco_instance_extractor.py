@@ -51,6 +51,10 @@ class COCOInstanceExtractor(InstanceExtractor):
             else:
                 print("0")
 
+        ims = pd.DataFrame(self.train_annotations['images'])
+        width_counts = ims['height'].value_counts()
+        print(width_counts)
+
         print("")
         # Instances on the Validation Set
         print("Instances Validation Set") 

@@ -9,18 +9,8 @@ import random
 import shutil
 from filecmp import dircmp
 import swifter
-from utils.coco2yolo import ignore_extended_attributes
-# Numpy converting things without being asked to do it
-# Stolen from: https://stackoverflow.com/a/57915246
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super(NpEncoder, self).default(obj)
+from utils.auxiliar import ignore_extended_attributes, NpEncoder
+
 
 class COCOInstanceGenerator(InstanceGenerator):
 
@@ -47,7 +37,6 @@ class COCOInstanceGenerator(InstanceGenerator):
                         ignore=shutil.ignore_patterns('.*'))
 
         print("Copy Created")
-        
 
         # Read annotations as a dictionary
         with open(self.a_train_annotations_path) as f:
@@ -141,8 +130,9 @@ class COCOInstanceGenerator(InstanceGenerator):
             instance_bbox_df = pd.DataFrame([instance_bbox], columns=['x', 'y', 'w', 'h'])
             bboxs =  annotations[annotations['image_id'] == img_row['id']]['bbox']
 
-            
-            if not self.check_instance_collider(instance_bbox_df, bboxs):
+            # The terminology has to be changed because is a litle bit ambiguous
+            # The function returns True if there is NO collisions
+            if self.check_instance_collider(instance_bbox_df, bboxs):
                 break
             
 
@@ -191,6 +181,19 @@ class COCOInstanceGenerator(InstanceGenerator):
             annotations_img =  annotations[annotations['image_id'] == img_row['id']].copy()
             annotations_img['image_id'] = image_id
             annotations_img['id'] = annotations_img['id'].apply(lambda x: self.get_new_instance_id())
+
+            majority_class = self.class_count_difference.idxmin()
+            majority_annotations = annotations_img[annotations_img['category_id'] == majority_class]
+            
+            image_np = np.array(image)
+            for i, r in majority_annotations.iterrows():
+                image_np[r['bbox'][1]:r['bbox'][1]+r['bbox'][3], r['bbox'][0]:r['bbox'][0]+r['bbox'][2]] = 0
+                 
+            image = Image.fromarray(image_np)
+
+            annotations_img = annotations_img[annotations_img['category_id'] != majority_class]
+
+
             self.train_annotations['annotations'].extend(annotations_img.to_dict('records'))
             self.update_class_count_difference()
 
