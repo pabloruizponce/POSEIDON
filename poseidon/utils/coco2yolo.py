@@ -3,14 +3,9 @@ import json
 import shutil
 import pandas as pd
 from tqdm import tqdm
+from utils.auxiliar import ignore_extended_attributes
 
 
-# MAC shitty file system related
-# Stolen from: https://stackoverflow.com/a/70355470
-def ignore_extended_attributes(func, filename, exc_info):
-    is_meta_file = os.path.basename(filename).startswith("._")
-    if not (func is os.unlink and is_meta_file):
-        raise
 
 
 class COCO2YOLO:
