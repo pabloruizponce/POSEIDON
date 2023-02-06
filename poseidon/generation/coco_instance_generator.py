@@ -130,6 +130,9 @@ class COCOInstanceGenerator(InstanceGenerator):
             instance_bbox_df = pd.DataFrame([instance_bbox], columns=['x', 'y', 'w', 'h'])
             bboxs =  annotations[annotations['image_id'] == img_row['id']]['bbox']
 
+            if len(bboxs) == 0:
+                break
+
             # The terminology has to be changed because is a litle bit ambiguous
             # The function returns True if there is NO collisions
             if self.check_instance_collider(instance_bbox_df, bboxs):

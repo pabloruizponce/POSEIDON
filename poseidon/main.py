@@ -4,9 +4,9 @@ from utils.normalization import COCONormalization
 from utils.coco2yolo import COCO2YOLO
 
 if __name__ == '__main__':
-    #extractor = COCOInstanceExtractor()
-    #extractor.dataset_stats()
-    #extractor.extract()
+    extractor = COCOInstanceExtractor()
+    extractor.dataset_stats()
+    extractor.extract()
 
     generator = COCOInstanceGenerator()
     generator.balance('/Users/pabloruizponce/Vainas/POSEIDON/poseidon/outputs')
