@@ -41,6 +41,12 @@ class COCOInstanceGenerator(InstanceGenerator):
         # Read annotations as a dictionary
         with open(self.a_train_annotations_path) as f:
             self.train_annotations = json.load(f)
+        
+        self.annotations = pd.DataFrame(self.train_annotations['annotations'])
+        self.original_annotations = pd.DataFrame(self.train_annotations['annotations'])
+        self.images = pd.DataFrame(self.train_annotations['images'])
+        self.original_images = pd.DataFrame(self.train_annotations['images'])
+
 
     def dataset_stats(self):
 
@@ -51,10 +57,9 @@ class COCOInstanceGenerator(InstanceGenerator):
         # Instances on the Training Set
         print("Instances Training Set") 
         print("______________________")
-        # Load annotations into a dataframe
-        df = pd.DataFrame(self.train_annotations['annotations'])
+
         # Obtain pd.Series with the count of the different rows
-        df_counts = df['category_id'].value_counts()
+        df_counts = self.annotations['category_id'].value_counts()
         # Print
         for category in self.train_annotations['categories']:
             print(category['name'], ": ",sep="", end="")
@@ -67,10 +72,8 @@ class COCOInstanceGenerator(InstanceGenerator):
         return
     
     def update_class_count_difference(self): 
-        # Load annotations into a dataframe
-        df = pd.DataFrame(self.train_annotations['annotations'])
         # Obtain pd.Series with the count of the different rows
-        df_counts = df['category_id'].value_counts()
+        df_counts = self.annotations['category_id'].value_counts()
         # Save the count distance between the minirity classes and the majority class
         self.class_count_difference = df_counts.max() - df_counts
         return
@@ -93,9 +96,7 @@ class COCOInstanceGenerator(InstanceGenerator):
 
     # Get the maximun Y of the instances of a given image
     def get_max_y_image(self, img_row):
-
-        annotations = pd.DataFrame(self.train_annotations['annotations'])
-        bboxs =  annotations[annotations['image_id'] == img_row['id']]['bbox']
+        bboxs =  self.annotations[self.annotations['image_id'] == img_row['id']]['bbox']
         bboxs = np.array([i for i in bboxs])
         bboxs = pd.DataFrame(bboxs, columns=['x', 'y', 'w', 'h']).astype('int')
         return bboxs['y'].max()
@@ -105,16 +106,18 @@ class COCOInstanceGenerator(InstanceGenerator):
         population = self.class_count_difference.keys().to_numpy()
         weights = self.class_count_difference.to_numpy()
         choice = random.choices(population, weights=weights)[0]
+
         self.class_count_difference[choice] = self.class_count_difference[choice] - 1
 
         instances_path = os.path.join(instances_path, str(choice), str(angle_camera_bin))
         instance_path = os.path.join(instances_path, random.choice(os.listdir(instances_path)))
         instance = Image.open(instance_path)
-        
-        annotations = pd.DataFrame(self.train_annotations['annotations'])
-        
-        instance_id = annotations['id'].max() + 1
+                
+        instance_id = self.annotations['id'].max() + 1
         instance_image = img_row['id']
+        
+        # Just to debug the number of collisions
+        iters_colliding = 0
 
         while True:
             instance_x = random.randint(0, img_row['width'] - instance.width)
@@ -128,7 +131,8 @@ class COCOInstanceGenerator(InstanceGenerator):
                             ]
 
             instance_bbox_df = pd.DataFrame([instance_bbox], columns=['x', 'y', 'w', 'h'])
-            bboxs =  annotations[annotations['image_id'] == img_row['id']]['bbox']
+            # TODO
+            bboxs = (self.annotations[self.annotations['image_id'] == img_row['id']]['bbox']).copy()
 
             if len(bboxs) == 0:
                 break
@@ -137,10 +141,12 @@ class COCOInstanceGenerator(InstanceGenerator):
             # The function returns True if there is NO collisions
             if self.check_instance_collider(instance_bbox_df, bboxs):
                 break
+            iters_colliding += 1
+            #if iters_colliding == 10:
+                #print(bboxs)
+                #print(instance_bbox)
+                #image.show()
             
-
-        
-
         instance_area = instance.width * instance.height
         instance_category = choice
 
@@ -152,16 +158,19 @@ class COCOInstanceGenerator(InstanceGenerator):
             "category_id": instance_category
         }
 
+        instance_df = pd.Series([instance_id, instance_image, instance_bbox, instance_area, instance_category],
+                                     index=['id', 'image_id', 'bbox', 'area', 'category_id'])
+
         image.paste(instance, box=(instance_x, instance_y))
+        self.annotations.loc[len(self.annotations)] = instance_df
 
         return instance_dict
     
     def get_new_instance_id(self):
-        annotations = pd.DataFrame(self.train_annotations['annotations'])
-        return (annotations['id'].max() + 1)
+        return (self.annotations['id'].max() + 1)
 
-    def add_instances_image(self, img_row, instances_path, iteration):
-        if img_row["meta"] is not None and "gimbal_heading(degrees)" in img_row["meta"]:
+    def add_instances_image(self, img_row, instances_path, iteration, max_tolerance):
+        if self.class_count_difference.sum() > len(self.annotations) * max_tolerance and (img_row["meta"] is not None and "gimbal_heading(degrees)" in img_row["meta"]):
 
             angle_camera = img_row["meta"]["gimbal_heading(degrees)"]
             # TODO: El 8 esta metido a palo y eso no esta bien
@@ -170,53 +179,54 @@ class COCOInstanceGenerator(InstanceGenerator):
             image = Image.open(img_path)
             max_y = self.get_max_y_image(img_row)
 
-
             # Update new image metadata
             new_image_metadata = img_row.copy()
-            images_metadata = pd.DataFrame(self.train_annotations['images'])
-            image_id = images_metadata['id'].max() + 1
-            new_image_metadata['id'] = image_id
+            new_image_id = self.images['id'].max() + 1
+            new_image_metadata['id'] = new_image_id
             new_image_metadata['file_name'] =  str(iteration) + "_" + img_row['file_name']
-            self.train_annotations['images'].append(new_image_metadata.to_dict())
+            self.images.loc[len(self.images)] = new_image_metadata
 
             # Add the new instances
-            annotations = pd.DataFrame(self.train_annotations['annotations'])
-            annotations_img =  annotations[annotations['image_id'] == img_row['id']].copy()
-            annotations_img['image_id'] = image_id
+            annotations_img =  self.original_annotations[self.original_annotations['image_id'] == img_row['id']].copy()
+            annotations_img['image_id'] = new_image_id
             annotations_img['id'] = annotations_img['id'].apply(lambda x: self.get_new_instance_id())
 
             majority_class = self.class_count_difference.idxmin()
             majority_annotations = annotations_img[annotations_img['category_id'] == majority_class]
             
+            # Blackout majority classes intances
             image_np = np.array(image)
             for i, r in majority_annotations.iterrows():
                 image_np[r['bbox'][1]:r['bbox'][1]+r['bbox'][3], r['bbox'][0]:r['bbox'][0]+r['bbox'][2]] = 0
                  
+            # Convert to PIL image
             image = Image.fromarray(image_np)
 
+            # Only keep the annotations from the minority classes
             annotations_img = annotations_img[annotations_img['category_id'] != majority_class]
 
-
-            self.train_annotations['annotations'].extend(annotations_img.to_dict('records'))
+            # Update annotations
+            self.annotations = pd.concat([self.annotations, annotations_img], ignore_index=True)
             self.update_class_count_difference()
 
             # Gets the number of instances that will be generated for each image
             n_instances = random.randint(1, 10)
+
             for i in range(n_instances):
                 instance_metadata = self.add_instance_image(new_image_metadata, instances_path, image, max_y, angle_camera_bin)
-                self.train_annotations['annotations'].append(instance_metadata)
+                #self.annotations.append(instance_metadata)
 
             # Update everything
             image.save(os.path.join(self.images_a_train_path,new_image_metadata['file_name']))
 
         return
 
-    def balance(self, instances_path):
+    def balance(self, instances_path, max_tolerance=0.03):
         self.dataset_stats()
         # Iterate until the dataset has been balanced
         iteration = 1
-        images = pd.DataFrame(self.train_annotations['images'])
-        while self.class_count_difference.sum() != 0:
+
+        while self.class_count_difference.sum() > len(self.annotations) * max_tolerance:
             print("Class Balance")
             print(self.class_count_difference)
 
@@ -224,9 +234,12 @@ class COCOInstanceGenerator(InstanceGenerator):
             print(f"Iteration {iteration}")
             tqdm.pandas()
             # New instances generation
-            images.progress_apply(lambda x: self.add_instances_image(x, instances_path, iteration), axis=1)
+            self.original_images.progress_apply(lambda x: self.add_instances_image(x, instances_path, iteration, max_tolerance), axis=1)
             # Progress Bar not appearing I dunno why
             #images.swifter.progress_bar(True, bar_format='{l_bar}{bar}| elapsed: {elapsed}s').apply(lambda x: self.add_instances_image(x, instances_path, iteration), axis=1)
+
+            self.train_annotations['images'] = self.images.to_dict('records')
+            self.train_annotations['annotations'] = self.annotations.to_dict('records')
 
             with open(self.a_train_annotations_path, 'w') as f:
                 json.dump(self.train_annotations, f,  cls=NpEncoder)

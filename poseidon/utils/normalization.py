@@ -30,11 +30,21 @@ class COCONormalization:
         image.save(img_path)
 
         for i, instance in instances.iterrows():
+            x, y, w, h = instance['bbox']
+            center = (x + w / 2, y + h / 2)
+            w = w * normalize_factor
+            h = h * normalize_factor
+            x = center[0] - w / 2
+            y = center[1] - h / 2
+            instance['bbox'] = [x, y, w, h]
+
+            """
             instance["bbox"][0] *= normalize_factor
             instance["bbox"][1] *= normalize_factor
             instance["bbox"][2] *= normalize_factor
             instance["bbox"][3] *= normalize_factor
             instance["area"] *= normalize_factor
+            """
 
         self.train_annotations['annotations'] = annotations.to_dict('records')
 
@@ -78,6 +88,9 @@ class COCONormalization:
 
         with open(self.train_annotations_path, 'w') as f:
             json.dump(self.train_annotations, f,  cls=NpEncoder)
+
+
+        os.environ['POSEIDON_DATASET_PATH'] = output_path
 
         return
 

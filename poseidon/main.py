@@ -4,16 +4,20 @@ from utils.normalization import COCONormalization
 from utils.coco2yolo import COCO2YOLO
 
 if __name__ == '__main__':
+    
+    #normalizator = COCONormalization()
+    #normalizator.normalize("/Users/pabloruizponce/Vainas/SDSNormalized")
+
     extractor = COCOInstanceExtractor()
     extractor.dataset_stats()
-    extractor.extract()
+    #extractor.extract()
 
-    generator = COCOInstanceGenerator()
-    generator.balance('/Users/pabloruizponce/Vainas/POSEIDON/poseidon/outputs')
+    #generator = COCOInstanceGenerator()
+    #generator.balance('/Users/pabloruizponce/Vainas/POSEIDON/poseidon/outputs')
     
     #conversor = COCO2YOLO()
-    #conversor.convert("./SDSYOLO", "SDSYOLO"
+    #conversor.convert("/Users/pabloruizponce/Vainas/SDSYOLO", "SDSYOLO")
 
-    #normalizator = COCONormalization()
-    #normalizator.normalize("./SDSYOLO")
+    #conversor = COCO2YOLO(augmented=True)
+    #conversor.convert("/Users/pabloruizponce/Vainas/SDSYOLOAugmented", "SDSYOLOAugmented")
 

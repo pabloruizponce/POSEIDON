@@ -18,7 +18,7 @@ class COCOInstanceExtractor(InstanceExtractor):
         super().__init__()
 
         # Get path from the images and the annotation files
-        self.train_annotations_path = os.path.join(self.base_path, "annotations", "instances_train.json")
+        self.train_annotations_path = os.path.join(self.base_path, "annotations", "instances_train_augmented.json")
         self.val_annotations_path = os.path.join(self.base_path, "annotations", "instances_val.json")
         self.images_path = os.path.join(self.base_path, "images")
 
@@ -89,6 +89,10 @@ class COCOInstanceExtractor(InstanceExtractor):
         # Extract bounding box
         bbox = bbox['bbox']
         x, y, w, h = bbox
+        x = int(x)
+        y = int(y)
+        w = int(w)
+        h = int(h)
         instance = Image.fromarray(img[y:y+h, x:x+w])
         instance.save(output_path)
         return 

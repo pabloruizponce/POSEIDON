@@ -144,3 +144,4 @@ background.*
 docker/
 
 SDSYOLO/
+profiling/
