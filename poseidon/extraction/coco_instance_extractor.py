@@ -18,7 +18,7 @@ class COCOInstanceExtractor(InstanceExtractor):
         super().__init__()
 
         # Get path from the images and the annotation files
-        self.train_annotations_path = os.path.join(self.base_path, "annotations", "instances_train_augmented.json")
+        self.train_annotations_path = os.path.join(self.base_path, "annotations", "instances_train.json")
         self.val_annotations_path = os.path.join(self.base_path, "annotations", "instances_val.json")
         self.images_path = os.path.join(self.base_path, "images")
 
